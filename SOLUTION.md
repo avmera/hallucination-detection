@@ -1,6 +1,10 @@
 # SOLUTION.md - SMILES-2026 Hallucination Detection
 
-## 1. Reproducibility Instructions
+## 1. Overview
+
+This project addresses hallucination detection in language model responses. The goal is to classify each response as either truthful (`label = 0`) or hallucinated (`label = 1`) using hidden states extracted from Qwen2.5-0.5B.
+
+## 2. Reproducibility Instructions
 
 ### Required Environment
 
@@ -28,37 +32,17 @@ predictions.csv
 results.json
 ```
 
-The generated `predictions.csv` is the file submitted through the application form.
-
 ### Important Implementation Details
 
 The repository is self-contained and runnable with the provided `solution.py` file. The solution does not require changes to the fixed infrastructure files.
 
-The final implementation depends on enabling geometric features. In `solution.py` or the calling script, the aggregation function must be executed with:
+The final implementation depends on enabling geometric features. In `solution.py`, the aggregation function must be executed with:
 
 ```python
 USE_GEOMETRIC = True
 ```
 
 This is critical because the final score depends on extracting the representation drift and cosine similarity features from `extract_geometric_features`.
-
-The repository should contain the following files:
-
-```text
-aggregation.py
-probe.py
-splitting.py
-solution.py
-evaluate.py
-model.py
-requirements.txt
-results.json
-SOLUTION.md
-```
-
-The application form also requires a public link to the generated `predictions.csv` file.
-
----
 
 ## 2. Final Solution Description
 
@@ -157,6 +141,16 @@ This allowed the default MLP probe to receive explicit indicators of hesitation 
 
 ### What Contributed Most to Improving the Metric?
 
+The most important improvements came from the feature engineering choices in `aggregation.py`.
+
+The strongest contributors were:
+
+- Using the last real token instead of pooling over all tokens.
+- Using late-layer representations instead of early or middle layers.
+- Averaging the last 6 layers instead of relying only on the final layer.
+- Adding lightweight geometric representation-drift features.
+- Keeping the probe simple to reduce overfitting on the small dataset.
+
 Appending the geometric features from `extract_geometric_features` contributed the most to improving the metric.
 
 Specifically, the inter-layer cosine similarity trajectory combined with the layer of maximum change was the biggest contributor.
@@ -174,12 +168,66 @@ Geometric representation-drift features
 ```
 
 ---
-
 ## 3. Experiments and Failed Attempts
 
-During the competition, several alternative approaches were tested but ultimately discarded.
+I tested several aggregation and feature extraction strategies before selecting the final approach. Several alternative approaches were useful for comparison, but were ultimately discarded because they either did not improve the score consistently or caused overfitting.
 
-### 3.1 Complex Probe Architectures
+---
+
+### 3.1 Final Layer + Last Token Only
+
+**Idea:**
+
+The baseline approach used the last real token from the final transformer layer only.
+
+**Why discarded:**
+
+This was simple and strong, but relying on a single final layer can be noisy. The model's final layer may contain useful information, but it can also be sensitive to small representation changes. Averaging multiple late layers gave a more stable representation.
+
+---
+
+### 3.2 Mean of Last 4 Layers
+
+**Idea:**
+
+I tested averaging the last 4 layers at the last real token.
+
+**Why discarded:**
+
+This improved stability compared with using only the final layer, but the last 6 layers gave a slightly better result in my experiments. The last 6 layers provided a better balance between stability and preserving late-layer semantic information.
+
+---
+
+### 3.3 Mean of Last 8 Layers
+
+**Idea:**
+
+I also tested averaging the last 8 layers.
+
+**Why discarded:**
+
+This did not consistently improve the result. It may have included layers that were less directly useful for the final hallucination decision. In my experiments, using too many layers diluted the late-layer signal.
+
+---
+
+### 3.4 Middle-to-Late Layer Ranges
+
+**Idea:**
+
+I tested specific middle-to-late layer ranges such as:
+
+```text
+12:20
+16:24
+```
+
+**Why discarded:**
+
+These were useful experiments, but the best direction was still focused on the last token and the latest layers. The later layers appeared to contain a stronger signal for distinguishing truthful and hallucinated responses.
+
+---
+
+### 3.5 Complex Probe Architectures
 
 **Idea:**
 
@@ -201,7 +249,7 @@ Reverting to the default simple MLP proved much more robust when supplied with t
 
 ---
 
-### 3.2 Topological Data Analysis and Full Sequences
+### 3.6 Topological Data Analysis and Full Sequences
 
 **Idea:**
 
@@ -223,11 +271,11 @@ For this reason, I discarded the full topological feature approach from the fina
 
 ---
 
-### 3.3 First-Token vs. Last-Token Representation
+### 3.7 First-Token vs. Last-Token Representation
 
 **Idea:**
 
-I tried extracting features from the very first generated token, which can be interpreted as an early “decision” token.
+I tried extracting features from the very first generated token, which can be interpreted as an early "decision" token.
 
 **Why discarded:**
 
@@ -267,11 +315,12 @@ splitting.py:
 
 This approach was selected because it improved the metric while keeping the solution simple, lightweight, and reproducible.
 
-The repository can be cloned and run using:
+The most effective direction was:
 
-```bash
-git clone https://github.com/avmera/hallucination-detection.git
-cd hallucination-detection
-pip install -r requirements.txt
-python solution.py
+```text
+Late-layer final-token representation
++
+Geometric representation-drift features
 ```
+
+In my experiments, geometric features, especially the inter-layer cosine similarity trajectory and the layer of maximum change, contributed the most to improving the metric.
