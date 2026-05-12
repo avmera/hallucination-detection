@@ -44,6 +44,14 @@ USE_GEOMETRIC = True
 
 This is critical because the final score depends on extracting the representation drift and cosine similarity features from `extract_geometric_features`.
 
+Random seeds are fixed in probe.py for:
+
+Python random
+NumPy
+PyTorch
+
+This reduces run-to-run variation and makes the training process more reproducib
+
 ## 2. Final Solution Description
 
 ### What Components Were Modified?
