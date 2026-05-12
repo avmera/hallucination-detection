@@ -165,7 +165,7 @@ Specifically, the inter-layer cosine similarity trajectory combined with the lay
 
 This helped because it explicitly fed the probe information about how the language model arrived at its answer, separating truthful stability from hallucinated instability.
 
-In my experiments, this safely pushed the metric up to around 74.
+In my experiments, this safely pushed the metric up to around 75.
 
 The final direction was:
 
@@ -239,11 +239,8 @@ These were useful experiments, but the best direction was still focused on the l
 
 **Idea:**
 
-I experimented with modifying `probe.py` to include heavier architectures, such as:
+I experimented with more complex probe architectures, including deeper MLPs, ML alternatives. However, these approaches either overfit the small dataset or did not consistently improve validation/test AUROC. Therefore, I kept the default probe architecture and focused on improving aggregation.py through late-layer pooling and geometric representation-drift features.
 
-- Deeper MLPs
-- Support Vector Machines (SVM)
-- Custom attention mechanisms to weigh the importance of different layers
 
 **Why discarded:**
 
